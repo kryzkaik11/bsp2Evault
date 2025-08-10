@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Academic Vault AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: '#0B1020',
+              surface: '#11162A',
+              card: '#161B31',
+              primary: {
+                DEFAULT: '#7AA2F7',
+                foreground: '#0B1020',
+              },
+              accent: {
+                DEFAULT: '#5DE2E7',
+                foreground: '#0B1020',
+              },
+              success: '#31C48D',
+              warning: '#F0B429',
+              error: '#F05252',
+              'text-high': '#E6EAF5',
+              'text-mid': '#B6BBD2',
+              'text-low': '#6B7280',
+              border: '#2A3047',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              serif: ['Source Serif Pro', 'serif'],
+            },
+            keyframes: {
+              'fade-in': {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              'gradient-animation': {
+                '0%': { 'background-position': '0% 50%' },
+                '50%': { 'background-position': '100% 50%' },
+                '100%': { 'background-position': '0% 50%' },
+              }
+            },
+            animation: {
+              'fade-in': 'fade-in 0.5s ease-in-out',
+              'gradient': 'gradient-animation 15s ease infinite',
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #0B1020;
+        color: #B6BBD2;
+      }
+      .prose {
+        color: #B6BBD2;
+        line-height: 1.6;
+      }
+      .prose h1, .prose h2, .prose h3, .prose h4, .prose strong {
+        color: #E6EAF5;
+      }
+      .prose blockquote {
+        border-left-color: #2A3047;
+        color: #B6BBD2;
+      }
+      .prose code {
+         color: #E6EAF5;
+         background-color: #11162A;
+         padding: 0.2em 0.4em;
+         margin: 0;
+         font-size: 85%;
+         border-radius: 6px;
+      }
+      .prose ul > li::before {
+        background-color: #7AA2F7;
+      }
+      .prose pre {
+        white-space: pre-wrap;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.9rem;
+        background-color: transparent;
+        padding: 0;
+      }
+      /* Improve focus visibility */
+      *:focus-visible {
+        outline: 2px solid #7AA2F7;
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+      input:focus-visible, button:focus-visible, div[tabindex="0"]:focus-visible {
+         outline: none; /* Rely on tailwind's focus-visible:ring classes */
+      }
+       /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0B1020;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: #2A3047;
+        border-radius: 10px;
+        border: 3px solid #0B1020;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: #7AA2F7;
+      }
+
+      /* Animated Gradient Background */
+      .login-gradient-bg {
+        background: linear-gradient(-45deg, #0B1020, #11162A, #191E38, #232B4F);
+        background-size: 400% 400%;
+        animation: gradient-animation 15s ease infinite;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react-dropzone": "https://esm.sh/react-dropzone@^14.3.8",
+    "@google/genai": "https://esm.sh/@google/genai@0.14.0",
+    "framer-motion": "https://esm.sh/framer-motion@^11.3.8",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

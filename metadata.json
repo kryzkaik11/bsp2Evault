@@ -1,0 +1,6 @@
+{
+  "name": "Academic Vault",
+  "description": "An application to upload, manage, and share academic files like lecture notes, research papers, and presentations.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
