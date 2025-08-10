@@ -1,11 +1,5 @@
 
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = any;
 
 export interface Database {
   public: {
@@ -162,7 +156,7 @@ export interface Database {
             path: string[]
             created_at: string
             updated_at: string
-        }
+        }[]
       }
     }
     Enums: {
