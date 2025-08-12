@@ -1,4 +1,4 @@
-
+/// <reference types="vite/client" />
 
 import React, { useState, useMemo } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -21,12 +21,13 @@ const QuickStudy: React.FC = () => {
     const [result, setResult] = useState<string | FlashcardType[] | null>(null);
 
     const ai = useMemo(() => {
-        if (!process.env.API_KEY) {
-            setError("Error: API_KEY is not configured. AI features are disabled.");
+        const apiKey = import.meta.env.VITE_API_KEY;
+        if (!apiKey) {
+            setError("Error: VITE_API_KEY is not configured. AI features are disabled.");
             return null;
         }
         setError(null);
-        return new GoogleGenAI({ apiKey: process.env.API_KEY });
+        return new GoogleGenAI({ apiKey });
     }, []);
 
     const handleGenerate = async (tool: AITool) => {
