@@ -1,3 +1,4 @@
+
 import { supabase } from './supabase';
 import { AppFile, Folder, Visibility, Collection, UserProfile, FileStatus, FileType, AnalysisContent } from '../types';
 import { User } from '@supabase/supabase-js';
@@ -21,7 +22,7 @@ const toAppFile = (fileFromDb: Database['public']['Tables']['files']['Row']): Ap
 export const getProfileForUser = async (user: User): Promise<UserProfile | null> => {
     const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, display_name, role, settings')
         .eq('id', user.id)
         .single();
 
@@ -35,7 +36,7 @@ export const getProfileForUser = async (user: User): Promise<UserProfile | null>
 export const getFolders = async (parentId: string | null): Promise<Folder[]> => {
   let query = supabase
     .from('folders')
-    .select('*');
+    .select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at');
 
   if (parentId === null) {
     query = query.is('parent_id', null);
@@ -54,7 +55,7 @@ export const getFolders = async (parentId: string | null): Promise<Folder[]> => 
 export const getFiles = async (folderId: string | null): Promise<AppFile[]> => {
   let query = supabase
     .from('files')
-    .select('*');
+    .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content');
 
   if (folderId === null) {
     query = query.is('folder_id', null);
@@ -71,7 +72,7 @@ export const getFiles = async (folderId: string | null): Promise<AppFile[]> => {
 };
 
 export const getAllFiles = async (): Promise<AppFile[]> => {
-    const { data, error } = await supabase.from('files').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('files').select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content').order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map(toAppFile);
 }
@@ -79,7 +80,7 @@ export const getAllFiles = async (): Promise<AppFile[]> => {
 export const getSharedFolders = async (parentId: string | null): Promise<Folder[]> => {
     let query = supabase
         .from('folders')
-        .select('*');
+        .select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at');
 
     if (parentId === null) {
         query = query.is('parent_id', null);
@@ -98,7 +99,7 @@ export const getSharedFolders = async (parentId: string | null): Promise<Folder[
 export const getSharedFiles = async (folderId: string | null): Promise<AppFile[]> => {
     let query = supabase
         .from('files')
-        .select('*');
+        .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content');
     
     if (folderId === null) {
         query = query.is('folder_id', null);
@@ -119,7 +120,7 @@ export const getFilesByIds = async (fileIds: string[]): Promise<AppFile[]> => {
   if (!fileIds || fileIds.length === 0) return [];
   const { data, error } = await supabase
     .from('files')
-    .select('*')
+    .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content')
     .in('id', fileIds);
     
   if (error) throw error;
@@ -146,11 +147,11 @@ export const getFolderPath = async (folderId: string | null): Promise<Folder[]> 
         return path.map(f => ({...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
     }
 
-    return (data || []).map(f => ({...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+    return (Array.isArray(data) ? data : []).map(f => ({...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 }
 
 export const getAllFolders = async (): Promise<Folder[]> => {
-    const { data, error } = await supabase.from('folders').select('*');
+    const { data, error } = await supabase.from('folders').select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at');
     if (error) throw error;
     return (data || []).map(f => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 }
@@ -189,7 +190,7 @@ export const addFile = async (file: File, ownerId: string, folderId: string | nu
         ai_content: null,
     };
 
-    const { data, error } = await supabase.from('files').insert([newFileRecord]).select().single();
+    const { data, error } = await supabase.from('files').insert(newFileRecord).select().single();
     if (error) {
         console.error('Database insert error:', error);
         await supabase.storage.from('academic vault').remove([filePath]);
@@ -215,7 +216,7 @@ export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> =>
         .from('files')
         .update(dbPayload)
         .eq('id', updatedFile.id)
-        .select()
+        .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content')
         .single();
         
     if (error) throw error;
@@ -227,7 +228,7 @@ export const publishFiles = async (fileIds: string[]): Promise<AppFile[]> => {
         .from('files')
         .update({ visibility: 'shared', updated_at: new Date().toISOString() })
         .in('id', fileIds)
-        .select();
+        .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content');
 
     if (error) throw error;
     return (data || []).map(toAppFile);
@@ -252,8 +253,8 @@ export const createFolder = async (title: string, parentId: string | null, owner
     
     const { data, error } = await supabase
         .from('folders')
-        .insert([newFolderData])
-        .select()
+        .insert(newFolderData)
+        .select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at')
         .single();
 
     if (error) throw error;
@@ -261,7 +262,7 @@ export const createFolder = async (title: string, parentId: string | null, owner
 }
 
 export const getCollections = async (): Promise<Collection[]> => {
-    const { data, error } = await supabase.from('collections').select('*');
+    const { data, error } = await supabase.from('collections').select('id, owner_id, title, visibility, file_ids, created_at, updated_at');
     if (error) throw error;
     return (data || []).map(c => ({ ...c, created_at: new Date(c.created_at), updated_at: new Date(c.updated_at) }));
 }
@@ -447,11 +448,11 @@ export const addSampleFiles = async (userId: string) => {
             owner_id: userId,
             folder_id: sampleFile.folder_id,
             title: sampleFile.title,
-            type: sampleFile.type as any,
+            type: sampleFile.type as Database['public']['Enums']['file_type'],
             size: sampleFile.size,
-            status: sampleFile.status as any,
+            status: sampleFile.status as Database['public']['Enums']['file_status'],
             progress: sampleFile.progress,
-            visibility: sampleFile.visibility as any,
+            visibility: sampleFile.visibility as Database['public']['Enums']['visibility'],
             collection_ids: sampleFile.collection_ids,
             tags: sampleFile.tags,
             meta: sampleFile.meta as Json,
