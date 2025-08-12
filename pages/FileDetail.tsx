@@ -1,4 +1,4 @@
-
+/// <reference types="vite/client" />
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type, Chat } from '@google/genai';
@@ -75,12 +75,13 @@ const FileDetail: React.FC<FileDetailProps> = ({ file, onBack, updateFile }) => 
     }, [aiContent, file, updateFile]);
 
     const ai = useMemo(() => {
-        if (!process.env.API_KEY) {
-            setError("Error: API_KEY is not configured. AI features are disabled.");
+        const apiKey = import.meta.env.VITE_API_KEY;
+        if (!apiKey) {
+            setError("Error: VITE_API_KEY is not configured. AI features are disabled.");
             return null;
         }
         setError(null);
-        return new GoogleGenAI({ apiKey: process.env.API_KEY });
+        return new GoogleGenAI({ apiKey });
     }, []);
 
     // Initialize the chat session
