@@ -1,6 +1,7 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence, Transition } from 'framer-motion';
+import { motion, AnimatePresence, type Transition } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import Dashboard from '../../pages/Dashboard';
@@ -170,7 +171,7 @@ const AppLayout: React.FC<{ showOnboarding: boolean }> = ({ showOnboarding }) =>
       out: { opacity: 0, y: -20 },
   };
 
-  const pageTransition: Transition = {
+  const pageTransition = {
       type: 'tween',
       ease: 'anticipate',
       duration: 0.4,
