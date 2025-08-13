@@ -1,4 +1,6 @@
 
+
+
 import { supabase } from './supabase';
 import { AppFile, Folder, Visibility, Collection, UserProfile, FileStatus, FileType, AnalysisContent } from '../types';
 import { User } from '@supabase/supabase-js';
@@ -129,25 +131,17 @@ export const getFilesByIds = async (fileIds: string[]): Promise<AppFile[]> => {
 
 export const getFolderPath = async (folderId: string | null): Promise<Folder[]> => {
     if (!folderId) return [];
-    
-    const { data, error } = await supabase.rpc('get_folder_path', {
-        p_folder_id: folderId
-    });
 
-    if (error) {
-        console.error("Error fetching folder path with RPC, using fallback:", error);
-        // Fallback for local dev if RPC not set up
-        const allFolders = await getAllFolders();
-        const path: Folder[] = [];
-        let currentFolder = allFolders.find(f => f.id === folderId);
-        while(currentFolder) {
-            path.unshift(currentFolder);
-            currentFolder = allFolders.find(f => f.id === currentFolder!.parent_id);
-        }
-        return path.map(f => ({...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+    // The RPC call was causing TS errors, so we'll use the JS-based fallback as the primary method.
+    const allFolders = await getAllFolders();
+    const path: Folder[] = [];
+    let currentFolder: Folder | undefined = allFolders.find(f => f.id === folderId);
+
+    while (currentFolder) {
+        path.unshift(currentFolder);
+        currentFolder = allFolders.find(f => f.id === currentFolder!.parent_id);
     }
-
-    return (Array.isArray(data) ? data : []).map(f => ({...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+    return path;
 }
 
 export const getAllFolders = async (): Promise<Folder[]> => {
@@ -161,7 +155,7 @@ export const addFile = async (file: File, ownerId: string, folderId: string | nu
     const filePath = `${ownerId}/${fileId}/${file.name}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('academic vault')
+        .from('academic-vault')
         .upload(filePath, file, {
             cacheControl: '3600',
             upsert: false,
@@ -193,7 +187,7 @@ export const addFile = async (file: File, ownerId: string, folderId: string | nu
     const { data, error } = await supabase.from('files').insert(newFileRecord).select().single();
     if (error) {
         console.error('Database insert error:', error);
-        await supabase.storage.from('academic vault').remove([filePath]);
+        await supabase.storage.from('academic-vault').remove([filePath]);
         throw error;
     }
     return toAppFile(data);
@@ -271,7 +265,7 @@ export const getFileContent = async (file: AppFile): Promise<string> => {
     // 1. Check for real file in storage
     if (file.meta?.storage_path) {
         const { data: blob, error } = await supabase.storage
-            .from('academic vault')
+            .from('academic-vault')
             .download(file.meta.storage_path);
 
         if (error) {
@@ -425,7 +419,7 @@ export const deleteItems = async (fileIds: string[], folderIds: string[]) => {
             .filter((p): p is string => !!p);
 
         if (paths.length > 0) {
-            const { error: storageError } = await supabase.storage.from('academic vault').remove(paths);
+            const { error: storageError } = await supabase.storage.from('academic-vault').remove(paths);
             if (storageError) throw storageError;
         }
 
