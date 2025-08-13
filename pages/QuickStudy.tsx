@@ -21,7 +21,7 @@ const QuickStudy: React.FC = () => {
     const [result, setResult] = useState<string | FlashcardType[] | null>(null);
 
     const ai = useMemo(() => {
-        const apiKey = process.env.API_KEY;
+        const apiKey = process.env.VITE_API_KEY;
         if (!apiKey) {
             setError("Error: API_KEY is not configured in environment variables. AI features are disabled.");
             return null;
