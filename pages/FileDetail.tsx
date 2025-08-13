@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type, Chat } from '@google/genai';
@@ -75,9 +74,9 @@ const FileDetail: React.FC<FileDetailProps> = ({ file, onBack, updateFile }) => 
     }, [aiContent, file, updateFile]);
 
     const ai = useMemo(() => {
-        const apiKey = import.meta.env.VITE_API_KEY;
+        const apiKey = process.env.API_KEY;
         if (!apiKey) {
-            setError("Error: VITE_API_KEY is not configured. AI features are disabled.");
+            setError("Error: API_KEY is not configured in environment variables. AI features are disabled.");
             return null;
         }
         setError(null);
