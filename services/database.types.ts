@@ -3,6 +3,7 @@
 
 
 
+
 export type Json =
   | string
   | number
@@ -153,21 +154,7 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      get_folder_path: {
-        Args: {
-          p_folder_id: string
-        }
-        Returns: {
-            id: string
-            owner_id: string
-            title: string
-            parent_id: string | null
-            visibility: "private" | "shared"
-            path: string[]
-            created_at: string
-            updated_at: string
-        }[]
-      }
+      [_ in never]: never
     }
     Enums: {
       "file_status": "idle" | "uploading" | "scanning" | "processing" | "ready" | "error" | "quarantined"
