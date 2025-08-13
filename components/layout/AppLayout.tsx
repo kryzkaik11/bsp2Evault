@@ -171,7 +171,7 @@ const AppLayout: React.FC<{ showOnboarding: boolean }> = ({ showOnboarding }) =>
       out: { opacity: 0, y: -20 },
   };
 
-  const pageTransition = {
+  const pageTransition: Transition = {
       type: 'tween',
       ease: 'anticipate',
       duration: 0.4,
