@@ -8,6 +8,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+      // In a production environment, this object should be populated with your actual
+      // environment variables during your build or deployment process.
+      // For Cloudflare Pages, you can use a transform rule or a build script
+      // to replace these placeholder values with your environment variables.
+      window.APP_CONFIG = {
+        VITE_SUPABASE_URL: "__VITE_SUPABASE_URL__",
+        VITE_SUPABASE_ANON_KEY: "__VITE_SUPABASE_ANON_KEY__",
+        VITE_API_KEY: "__VITE_API_KEY__"
+      };
+    </script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
