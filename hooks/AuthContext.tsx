@@ -34,6 +34,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // This simplifies logic and prevents race conditions.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        setLoading(true);
         try {
             setSession(session);
             const currentUser = session?.user ?? null;
