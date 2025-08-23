@@ -1,11 +1,9 @@
 
-
 import { supabase } from './supabase';
 import { AppFile, Folder, Visibility, Collection, UserProfile, FileStatus, FileType, AnalysisContent } from '../types';
 import { User } from '@supabase/supabase-js';
 import { Database, Json } from './database.types';
 import { ONBOARDING_SAMPLE_FILES } from '../pages/constants';
-import * as mockApi from './mockApi';
 
 
 // Helper to map a DB file row to an AppFile, handling type conversions
@@ -302,6 +300,27 @@ export const getCollections = async (): Promise<Collection[]> => {
     return (data || []).map((c) => ({ ...c, visibility: c.visibility as Visibility, created_at: new Date(c.created_at), updated_at: new Date(c.updated_at) }));
 }
 
+// A specific function to get mock content for sample files, used as a fallback.
+const getMockFileContent = (file: AppFile): string | null => {
+    const sample = ONBOARDING_SAMPLE_FILES.find(f => f.title === file.title);
+    if (!sample) return null;
+
+    if (file.title.includes('Sample Lecture Video')) {
+        return `
+        Transcript: Intro to Psychology - Major schools of thought.
+        1. Structuralism (Wundt): Breaking down mental processes. Method: introspection.
+        2. Functionalism (James): Purpose of consciousness and behavior.
+        3. Psychoanalysis (Freud): Influence of the unconscious mind (id, ego, superego).
+        `;
+    }
+    if (file.title.includes('Research Paper Sample')) {
+        return `
+        Abstract: Sleep is critical for learning and memory consolidation. It stabilizes new memories and integrates new information. This involves a dialogue between the hippocampus and neocortex during SWS and REM sleep.
+        `;
+    }
+    return null;
+}
+
 export const getFileContent = async (file: AppFile): Promise<string> => {
     // 1. Check for real file in storage
     if (file.meta?.storage_path) {
@@ -311,18 +330,23 @@ export const getFileContent = async (file: AppFile): Promise<string> => {
 
         if (error) {
             console.error("Error downloading file content:", error);
-            throw error;
-        }
-        
-        try {
-            return await blob.text();
-        } catch (e) {
-             return `Could not read content from file: ${file.title}. It may be a binary file.`;
+            // Fall through to see if there's mock content
+        } else {
+            try {
+                return await blob.text();
+            } catch (e) {
+                 return `Could not read content from file: ${file.title}. It may be a binary file.`;
+            }
         }
     }
 
     // 2. Fallback to mock content for sample files if storage path is missing
-    return mockApi.getFileContent(file.id);
+    const mockContent = getMockFileContent(file);
+    if (mockContent) {
+        return mockContent;
+    }
+    
+    return "The content for this file could not be retrieved or is not available for preview.";
 };
 
 export const deleteItems = async (fileIds: string[], folderIds: string[]) => {
