@@ -1,6 +1,5 @@
 
 
-
 import { supabase } from './supabase';
 import { AppFile, Folder, Visibility, Collection, UserProfile, FileStatus, FileType, AnalysisContent } from '../types';
 import { User } from '@supabase/supabase-js';
@@ -51,7 +50,7 @@ export const getFolders = async (parentId: string | null): Promise<Folder[]> => 
     .order('title', { ascending: true });
     
   if (error) throw error;
-  return (data || []).map(f => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+  return (data || []).map((f: Database['public']['Tables']['folders']['Row']) => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 };
 
 export const getFiles = async (folderId: string | null): Promise<AppFile[]> => {
@@ -95,7 +94,7 @@ export const getSharedFolders = async (parentId: string | null): Promise<Folder[
         .order('title', { ascending: true });
 
     if (error) throw error;
-    return (data || []).map(f => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+    return (data || []).map((f: Database['public']['Tables']['folders']['Row']) => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 }
 
 export const getSharedFiles = async (folderId: string | null): Promise<AppFile[]> => {
@@ -131,23 +130,31 @@ export const getFilesByIds = async (fileIds: string[]): Promise<AppFile[]> => {
 
 export const getFolderPath = async (folderId: string | null): Promise<Folder[]> => {
     if (!folderId) return [];
+    
+    const { data, error } = await supabase.rpc('get_folder_path', {
+        p_folder_id: folderId
+    } as any);
 
-    // The RPC call was causing TS errors, so we'll use the JS-based fallback as the primary method.
-    const allFolders = await getAllFolders();
-    const path: Folder[] = [];
-    let currentFolder: Folder | undefined = allFolders.find(f => f.id === folderId);
-
-    while (currentFolder) {
-        path.unshift(currentFolder);
-        currentFolder = allFolders.find(f => f.id === currentFolder!.parent_id);
+    if (error) {
+        console.error("Error fetching folder path with RPC, using fallback:", error);
+        // Fallback for local dev if RPC not set up
+        const allFolders = await getAllFolders();
+        const path: Folder[] = [];
+        let currentFolder = allFolders.find(f => f.id === folderId);
+        while(currentFolder) {
+            path.unshift(currentFolder);
+            currentFolder = allFolders.find(f => f.id === currentFolder!.parent_id);
+        }
+        return path.map((f: Folder) => ({...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
     }
-    return path;
+
+    return (Array.isArray(data) ? data : []).map((f: any) => ({...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 }
 
 export const getAllFolders = async (): Promise<Folder[]> => {
     const { data, error } = await supabase.from('folders').select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at');
     if (error) throw error;
-    return (data || []).map(f => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+    return (data || []).map((f: Database['public']['Tables']['folders']['Row']) => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 }
 
 export const addFile = async (file: File, ownerId: string, folderId: string | null): Promise<AppFile> => {
@@ -155,7 +162,7 @@ export const addFile = async (file: File, ownerId: string, folderId: string | nu
     const filePath = `${ownerId}/${fileId}/${file.name}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('academic-vault')
+        .from('academic vault')
         .upload(filePath, file, {
             cacheControl: '3600',
             upsert: false,
@@ -184,13 +191,17 @@ export const addFile = async (file: File, ownerId: string, folderId: string | nu
         ai_content: null,
     };
 
-    const { data, error } = await supabase.from('files').insert(newFileRecord).select().single();
+    const { data, error } = await supabase.from('files').insert([newFileRecord]).select();
     if (error) {
         console.error('Database insert error:', error);
-        await supabase.storage.from('academic-vault').remove([filePath]);
+        await supabase.storage.from('academic vault').remove([filePath]);
         throw error;
     }
-    return toAppFile(data);
+     if (!data || data.length === 0) {
+        await supabase.storage.from('academic vault').remove([filePath]);
+        throw new Error("File record creation failed.");
+    }
+    return toAppFile(data[0]);
 };
 
 export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> => {
@@ -208,7 +219,7 @@ export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> =>
 
     const { data, error } = await supabase
         .from('files')
-        .update(dbPayload)
+        .update(dbPayload as any)
         .eq('id', updatedFile.id)
         .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content')
         .single();
@@ -220,7 +231,7 @@ export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> =>
 export const publishFiles = async (fileIds: string[]): Promise<AppFile[]> => {
     const { data, error } = await supabase
         .from('files')
-        .update({ visibility: 'shared', updated_at: new Date().toISOString() })
+        .update({ visibility: 'shared', updated_at: new Date().toISOString() } as any)
         .in('id', fileIds)
         .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content');
 
@@ -247,25 +258,27 @@ export const createFolder = async (title: string, parentId: string | null, owner
     
     const { data, error } = await supabase
         .from('folders')
-        .insert(newFolderData)
-        .select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at')
-        .single();
+        .insert([newFolderData])
+        .select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at');
 
     if (error) throw error;
-    return { ...data, created_at: new Date(data.created_at), updated_at: new Date(data.updated_at) };
+    if (!data || data.length === 0) throw new Error("Folder creation failed.");
+    
+    const newFolder = data[0];
+    return { ...newFolder, created_at: new Date(newFolder.created_at), updated_at: new Date(newFolder.updated_at) };
 }
 
 export const getCollections = async (): Promise<Collection[]> => {
     const { data, error } = await supabase.from('collections').select('id, owner_id, title, visibility, file_ids, created_at, updated_at');
     if (error) throw error;
-    return (data || []).map(c => ({ ...c, created_at: new Date(c.created_at), updated_at: new Date(c.updated_at) }));
+    return (data || []).map((c: Database['public']['Tables']['collections']['Row']) => ({ ...c, created_at: new Date(c.created_at), updated_at: new Date(c.updated_at) }));
 }
 
 export const getFileContent = async (file: AppFile): Promise<string> => {
     // 1. Check for real file in storage
     if (file.meta?.storage_path) {
         const { data: blob, error } = await supabase.storage
-            .from('academic-vault')
+            .from('academic vault')
             .download(file.meta.storage_path);
 
         if (error) {
@@ -415,11 +428,11 @@ export const deleteItems = async (fileIds: string[], folderIds: string[]) => {
         if (selectError) throw selectError;
 
         const paths = filesToDelete
-            .map(f => (f.meta as { storage_path?: string })?.storage_path)
+            .map((f: any) => (f.meta as { storage_path?: string })?.storage_path)
             .filter((p): p is string => !!p);
 
         if (paths.length > 0) {
-            const { error: storageError } = await supabase.storage.from('academic-vault').remove(paths);
+            const { error: storageError } = await supabase.storage.from('academic vault').remove(paths);
             if (storageError) throw storageError;
         }
 
@@ -456,7 +469,7 @@ export const addSampleFiles = async (userId: string) => {
         };
     });
 
-    const { error } = await supabase.from('files').insert(sampleFileRecords);
+    const { error } = await supabase.from('files').insert(sampleFileRecords as any);
 
     if (error) {
         console.error('Error adding sample files:', error);
