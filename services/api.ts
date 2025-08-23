@@ -1,5 +1,6 @@
 
-import { supabase, isDemoMode } from './supabase';
+
+import { supabase } from './supabase';
 import { AppFile, Folder, Visibility, Collection, UserProfile, FileStatus, FileType, AnalysisContent } from '../types';
 import { User } from '@supabase/supabase-js';
 import { Database, Json } from './database.types';
@@ -22,8 +23,6 @@ const toAppFile = (fileFromDb: Database['public']['Tables']['files']['Row']): Ap
 };
 
 export const getProfileForUser = async (user: User): Promise<UserProfile | null> => {
-    if (isDemoMode) return mockApi.getProfileForUser(user);
-    
     // 1. Try to fetch the profile
     const { data: existingProfile, error } = await supabase
         .from('profiles')
@@ -65,8 +64,6 @@ export const getProfileForUser = async (user: User): Promise<UserProfile | null>
 }
 
 export const getFolders = async (parentId: string | null): Promise<Folder[]> => {
-    if (isDemoMode) return mockApi.getFolders(parentId);
-
     let query = supabase
         .from('folders')
         .select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at');
@@ -86,8 +83,6 @@ export const getFolders = async (parentId: string | null): Promise<Folder[]> => 
 };
 
 export const getFiles = async (folderId: string | null): Promise<AppFile[]> => {
-    if (isDemoMode) return mockApi.getFiles(folderId);
-
     let query = supabase
         .from('files')
         .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content');
@@ -107,16 +102,12 @@ export const getFiles = async (folderId: string | null): Promise<AppFile[]> => {
 };
 
 export const getAllFiles = async (): Promise<AppFile[]> => {
-    if (isDemoMode) return mockApi.getAllFiles();
-
     const { data, error } = await supabase.from('files').select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content').order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map(toAppFile);
 }
 
 export const getSharedFolders = async (parentId: string | null): Promise<Folder[]> => {
-    if (isDemoMode) return mockApi.getSharedFolders(parentId);
-
     let query = supabase
         .from('folders')
         .select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at');
@@ -136,8 +127,6 @@ export const getSharedFolders = async (parentId: string | null): Promise<Folder[
 }
 
 export const getSharedFiles = async (folderId: string | null): Promise<AppFile[]> => {
-    if (isDemoMode) return mockApi.getSharedFiles(folderId);
-    
     let query = supabase
         .from('files')
         .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content');
@@ -158,8 +147,6 @@ export const getSharedFiles = async (folderId: string | null): Promise<AppFile[]
 
 
 export const getFilesByIds = async (fileIds: string[]): Promise<AppFile[]> => {
-    if (isDemoMode) return mockApi.getFilesByIds(fileIds);
-
     if (!fileIds || fileIds.length === 0) return [];
     const { data, error } = await supabase
         .from('files')
@@ -171,8 +158,6 @@ export const getFilesByIds = async (fileIds: string[]): Promise<AppFile[]> => {
 }
 
 export const getFolderPath = async (folderId: string | null): Promise<Folder[]> => {
-    if (isDemoMode) return mockApi.getFolderPath(folderId);
-    
     if (!folderId) return [];
     
     const { data, error } = await supabase.rpc('get_folder_path', {
@@ -195,16 +180,12 @@ export const getFolderPath = async (folderId: string | null): Promise<Folder[]> 
 }
 
 export const getAllFolders = async (): Promise<Folder[]> => {
-    if (isDemoMode) return mockApi.getAllFolders();
-    
     const { data, error } = await supabase.from('folders').select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at');
     if (error) throw error;
     return (data || []).map((f) => ({ ...f, visibility: f.visibility as Visibility, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 }
 
 export const addFile = async (file: File, ownerId: string, folderId: string | null): Promise<AppFile> => {
-    if (isDemoMode) return mockApi.addFile(file, ownerId, folderId);
-
     const fileId = crypto.randomUUID();
     const filePath = `${ownerId}/${fileId}/${file.name}`;
 
@@ -252,8 +233,6 @@ export const addFile = async (file: File, ownerId: string, folderId: string | nu
 };
 
 export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> => {
-    if (isDemoMode) return mockApi.updateFileInApi(updatedFile);
-
     const dbPayload: Database['public']['Tables']['files']['Update'] = {
       title: updatedFile.title,
       tags: updatedFile.tags,
@@ -278,8 +257,6 @@ export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> =>
 }
 
 export const publishFiles = async (fileIds: string[]): Promise<AppFile[]> => {
-    if (isDemoMode) return mockApi.publishFiles(fileIds);
-
     const { data, error } = await supabase
         .from('files')
         .update({ visibility: 'shared', updated_at: new Date().toISOString() })
@@ -291,8 +268,6 @@ export const publishFiles = async (fileIds: string[]): Promise<AppFile[]> => {
 }
 
 export const createFolder = async (title: string, parentId: string | null, ownerId: string): Promise<Folder> => {
-    if (isDemoMode) return mockApi.createFolder(title, parentId, ownerId);
-
     let parentFolder: { visibility: "private" | "shared"; path: string[]; } | null = null;
     if (parentId) {
         const { data, error } = await supabase.from('folders').select('visibility, path').eq('id', parentId).single();
@@ -322,16 +297,12 @@ export const createFolder = async (title: string, parentId: string | null, owner
 }
 
 export const getCollections = async (): Promise<Collection[]> => {
-    if (isDemoMode) return mockApi.getCollections();
-
     const { data, error } = await supabase.from('collections').select('id, owner_id, title, visibility, file_ids, created_at, updated_at');
     if (error) throw error;
     return (data || []).map((c) => ({ ...c, visibility: c.visibility as Visibility, created_at: new Date(c.created_at), updated_at: new Date(c.updated_at) }));
 }
 
 export const getFileContent = async (file: AppFile): Promise<string> => {
-    if (isDemoMode) return mockApi.getFileContent(file.id);
-
     // 1. Check for real file in storage
     if (file.meta?.storage_path) {
         const { data: blob, error } = await supabase.storage
@@ -355,8 +326,6 @@ export const getFileContent = async (file: AppFile): Promise<string> => {
 };
 
 export const deleteItems = async (fileIds: string[], folderIds: string[]) => {
-    if (isDemoMode) return mockApi.deleteItems(fileIds, folderIds);
-    
     if (fileIds.length > 0) {
         const { data: filesToDelete, error: selectError } = await supabase
             .from('files')
@@ -385,8 +354,6 @@ export const deleteItems = async (fileIds: string[], folderIds: string[]) => {
 };
 
 export const addSampleFiles = async (userId: string) => {
-    if (isDemoMode) return mockApi.addSampleFiles(userId);
-
     const sampleFileRecords: Database['public']['Tables']['files']['Insert'][] = ONBOARDING_SAMPLE_FILES.map(sampleFile => {
         return {
             id: crypto.randomUUID(),
