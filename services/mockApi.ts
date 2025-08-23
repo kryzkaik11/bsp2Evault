@@ -1,19 +1,20 @@
 
+import { AppFile, Folder, Visibility, Collection, FileType, FileStatus, UserProfile, Role } from '../types';
+import { User } from '@supabase/supabase-js';
+import { MOCK_USER_ID, MOCK_PROFILE, ALL_MOCK_FILES, ALL_MOCK_FOLDERS, MOCK_COLLECTIONS } from './mockData';
+import { ONBOARDING_SAMPLE_FILES } from '../pages/constants';
 
-import { AppFile, Folder, Visibility, Collection, FileType } from '../types';
-
-// MOCK_FILES, MOCK_FOLDERS, MOCK_COLLECTIONS are not exported from constants.ts anymore.
-// Defining them as empty arrays here so the mock API can function without crashing.
-const MOCK_FILES: AppFile[] = [];
-const MOCK_FOLDERS: Folder[] = [];
-const MOCK_COLLECTIONS: Collection[] = [];
-
-
-// In a real app, this would be a state management library like Redux, Zustand, or React Query
-// For this mock, we'll just manipulate the arrays in memory.
-let files: AppFile[] = [...MOCK_FILES];
-let folders: Folder[] = [...MOCK_FOLDERS];
+// In a real app, this would be a state management library. For this mock, we just manipulate the arrays in memory.
+let files: AppFile[] = [...ALL_MOCK_FILES];
+let folders: Folder[] = [...ALL_MOCK_FOLDERS];
 let collections: Collection[] = [...MOCK_COLLECTIONS];
+
+export const getProfileForUser = async (user: User): Promise<UserProfile | null> => {
+    if (user.id === MOCK_USER_ID) {
+        return MOCK_PROFILE;
+    }
+    return null;
+}
 
 export const getFolders = async (parentId: string | null): Promise<Folder[]> => {
   return folders.filter(f => f.parent_id === parentId && f.visibility !== Visibility.Shared);
@@ -52,17 +53,31 @@ export const getFolderPath = async (folderId: string | null): Promise<Folder[]> 
     return path;
 }
 
-export const getRootFolders = async (): Promise<Folder[]> => {
-    return folders.filter(f => f.parent_id === null);
-}
-
 export const getAllFolders = async (): Promise<Folder[]> => {
     return folders;
 }
 
-export const addFile = async (file: AppFile): Promise<AppFile> => {
-  files.push(file);
-  return file;
+export const addFile = async (file: File, ownerId: string, folderId: string | null): Promise<AppFile> => {
+    const newFile: AppFile = {
+        id: crypto.randomUUID(),
+        owner_id: ownerId,
+        folder_id: folderId,
+        title: file.name,
+        type: (file.name.split('.').pop() || 'txt') as FileType,
+        size: file.size,
+        status: FileStatus.Ready,
+        progress: 100,
+        visibility: Visibility.Private,
+        collection_ids: [],
+        tags: ['newly uploaded'],
+        created_at: new Date(),
+        updated_at: new Date(),
+        meta: {
+            storage_path: `mock/${ownerId}/${file.name}`
+        },
+    };
+    files.unshift(newFile);
+    return newFile;
 };
 
 export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> => {
@@ -73,14 +88,16 @@ export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> =>
     return updatedFile;
 }
 
-export const publishFile = async (fileId: string): Promise<AppFile | undefined> => {
-    const index = files.findIndex(f => f.id === fileId);
-    if (index !== -1) {
-        files[index].visibility = Visibility.Shared;
-        files[index].updated_at = new Date();
-        return files[index];
-    }
-    return undefined;
+export const publishFiles = async (fileIds: string[]): Promise<AppFile[]> => {
+    const updatedFiles: AppFile[] = [];
+    files.forEach(file => {
+        if (fileIds.includes(file.id)) {
+            file.visibility = Visibility.Shared;
+            file.updated_at = new Date();
+            updatedFiles.push(file);
+        }
+    });
+    return updatedFiles;
 }
 
 export const createFolder = async (title: string, parentId: string | null, ownerId: string): Promise<Folder> => {
@@ -96,7 +113,7 @@ export const createFolder = async (title: string, parentId: string | null, owner
         created_at: new Date(),
         updated_at: new Date()
     };
-    folders.push(newFolder);
+    folders.unshift(newFolder);
     return newFolder;
 }
 
@@ -111,120 +128,55 @@ export const getFileContent = async (fileId: string): Promise<string> => {
     if (file.title.includes('Weeks-2-3-Introduction-to-Ethics')) {
         return `
         Introduction to Ethics: Weeks 2-3 Overview
-        
-        Week 2: Major Ethical Theories
-        This week, we will explore the foundational theories of normative ethics.
-        - Consequentialism: The morality of an action is judged solely by its consequences.
-            - Utilitarianism (Bentham, Mill): Focuses on the greatest good for the greatest number. We will differentiate between Act and Rule Utilitarianism.
-        - Deontology: Morality is based on adherence to rules or duties. Certain actions are inherently right or wrong, regardless of their outcomes.
-            - Kant's Categorical Imperative: Act only according to that maxim whereby you can at the same time will that it should become a universal law.
-        - Virtue Ethics (Aristotle): Focuses on the character of the moral agent rather than the actions themselves. It asks "What is a good person?" or "What makes for a virtuous life?".
-        
-        Week 3: Applied Ethics Case Studies
-        This week, we apply the theories learned in Week 2 to real-world moral problems.
-        - Case Study 1: Medical Ethics - Euthanasia. We will analyze this issue from utilitarian, deontological, and virtue ethics perspectives.
-        - Case Study 2: Business Ethics - Whistleblowing. Is there a duty to report wrongdoing, even at great personal cost?
-        - Case Study 3: Environmental Ethics - Climate Change. What responsibilities do individuals and corporations have towards the planet?
-        
-        Reading for Week 2: Rachels, "The Elements of Moral Philosophy", Chapters 7-10.
-        Reading for Week 3: Selected articles on Canvas.
-        
-        Assignment Due: Short paper analyzing one of the case studies from a chosen ethical framework.
+        - Consequentialism: Morality judged by consequences (Utilitarianism).
+        - Deontology: Morality based on rules/duties (Kant's Categorical Imperative).
+        - Virtue Ethics (Aristotle): Focuses on the character of the moral agent.
         `;
     }
     if (file.title.includes('AI Ethics Paper')) {
         return `
-        AI Ethics Comprehensive Review
-        
-        Introduction:
-        This paper delves into the ethical considerations surrounding the development and deployment of artificial intelligence. Key areas of focus include bias in algorithms, accountability, transparency (the "black box" problem), and the potential for job displacement.
-        
-        Bias in Algorithms:
-        AI systems learn from data. If that data reflects existing societal biases, the AI will perpetuate and even amplify them. For example, facial recognition systems have shown lower accuracy for women and people of color.
-        
-        Accountability:
-        When an AI system makes a critical error (e.g., in a self-driving car or medical diagnosis), who is responsible? The programmer, the user, the manufacturer? Establishing clear lines of accountability is a major challenge.
-        
-        The Black Box Problem:
-        Many advanced AI models, like deep neural networks, are "black boxes." We know they work, but we don't fully understand their internal decision-making processes. This lack of transparency is problematic for systems where explainability is crucial.
+        AI Ethics Review: Key areas are bias in algorithms, accountability, transparency (the "black box" problem), and job displacement. AI systems can amplify societal biases present in training data.
         `;
     }
     if (file.title.includes('Lecture 1 - Variables')) {
         return `
-        CS101 - Lecture 1 Transcript: Variables and Data Types
-        
-        (00:05) Instructor: Welcome to CS101. Today, we're starting with the absolute fundamentals: variables. Think of a variable as a container in your computer's memory where you can store a piece of information.
-        
-        (01:30) Instructor: To use a variable, you first have to declare it. This means you give it a name. For example, 'let score = 0;'. Here, 'score' is the name of our variable.
-        
-        (03:00) Instructor: Variables have types. The 'score' variable holds a number. We call this an 'integer'. Other common types are 'strings' for text, like 'let playerName = "Alice";', and 'booleans' for true/false values.
+        CS101 - Lecture 1 Transcript: Variables are containers in memory. You declare them with a name (e.g., 'let score = 0;'). Common types are integers (numbers), strings (text), and booleans (true/false).
         `;
     }
-     if (file.title.includes('Case Study on Moral Dilemmas')) {
+     if (file.title.includes('Public Syllabus for AI101')) {
         return `
-        Case Study: The Trolley Problem
-        
-        This classic thought experiment in ethics presents a moral dilemma. A runaway trolley is about to kill five people tied to the main track. You are standing next to a lever that can switch the trolley to a side track, where there is only one person tied up. Do you pull the lever?
-        
-        Utilitarian Perspective:
-        A utilitarian would argue that pulling the lever is the correct choice. Utilitarianism focuses on maximizing overall happiness and minimizing suffering. Saving five lives at the cost of one results in the best outcome for the greatest number of people.
-        
-        Deontological Perspective:
-        A deontologist might argue against pulling the lever. Deontology emphasizes moral duties and rules. By pulling the lever, you are actively participating in causing someone's death, which could be seen as a violation of the moral rule "do not kill." In this view, the five deaths on the main track are a tragedy, but not one you directly caused.
+        AI101: Intro to AI. Covers search, knowledge representation, machine learning. Graded on assignments (40%), midterm (25%), final (30%), participation (5%).
         `;
     }
-    if (file.title.includes('Uncategorized Notes')) {
-        return "These are my uncategorized notes. I need to remember to buy milk and also review chapter 3 of the physics textbook. The main topics are thermodynamics and kinetic energy. Also, the project deadline is next Friday.";
-    }
-    if (file.title.includes('Public Syllabus for AI101')) {
+    if (file.title.includes('Sample Lecture Video')) {
         return `
-        AI101: Introduction to Artificial Intelligence - Public Syllabus
-
-        Course Description:
-        This course provides a broad overview of the fundamental concepts and techniques in artificial intelligence. Topics include problem solving by search, knowledge representation, machine learning, and natural language processing.
-
-        Instructor: Dr. Ada Lovelace
-        Office Hours: By appointment
-
-        Grading:
-        - Assignments: 40%
-        - Midterm Exam: 25%
-        - Final Exam: 30%
-        - Participation: 5%
-
-        Week-by-week schedule:
-        - Week 1: Introduction to AI, history, and agents.
-        - Week 2: Problem Solving and Search Algorithms (BFS, DFS).
-        - Week 3: Heuristic Search (A* Search).
-        - Week 4: Logic and Knowledge Representation.
-        - Week 5: Introduction to Machine Learning.
+        Transcript: Intro to Psychology - Major schools of thought.
+        1. Structuralism (Wundt): Breaking down mental processes. Method: introspection.
+        2. Functionalism (James): Purpose of consciousness and behavior.
+        3. Psychoanalysis (Freud): Influence of the unconscious mind (id, ego, superego).
         `;
     }
-    if (file.id.startsWith('sample-1')) { // Sample Lecture Video
+    if (file.title.includes('Research Paper Sample')) {
         return `
-        Transcript: Introduction to Psychology - Sample Lecture
-
-        (00:10) Professor: Hello everyone, and welcome to Introduction to Psychology. In this course, we're going to explore the fascinating world of the human mind and behavior. What makes us tick? Why do we think and feel the way we do?
-
-        (01:15) Professor: Today, we'll start with the major schools of thought. First, we have Structuralism, pioneered by Wilhelm Wundt, which focused on breaking down mental processes into the most basic components. They used a method called introspection.
-
-        (03:45) Professor: Then came Functionalism, influenced by Charles Darwin. Functionalists like William James were more interested in the purpose of consciousness and behavior. They asked 'what do people do, and why do they do it?'
-
-        (05:20) Professor: We'll also touch on Psychoanalysis, Sigmund Freud's theory, which emphasizes the influence of the unconscious mind on behavior. This is where concepts like the id, ego, and superego come from.
-        `;
-    }
-    if (file.id.startsWith('sample-2')) { // Sample Research Paper
-        return `
-        The Impact of Sleep on Memory Consolidation and Learning
-
-        Abstract:
-        This paper reviews the critical role of sleep in learning and memory consolidation. While the functions of sleep are multifaceted, a growing body of evidence suggests that sleep is essential for stabilizing new memories, abstracting general rules from specific experiences, and integrating new information with pre-existing knowledge networks. We explore the neurophysiological mechanisms underlying these processes, focusing on the dialogue between the hippocampus and neocortex during different sleep stages.
-
-        Introduction:
-        For centuries, the purpose of sleep was a mystery. Today, we understand it as a dynamic period of brain activity crucial for cognitive function. One of its most important roles is in memory processing. When we learn something new, the memory is initially fragile. Sleep, particularly Slow-Wave Sleep (SWS) and Rapid Eye Movement (REM) sleep, helps to solidify this memory, making it robust and long-lasting. This process is known as consolidation.
+        Abstract: Sleep is critical for learning and memory consolidation. It stabilizes new memories and integrates new information. This involves a dialogue between the hippocampus and neocortex during SWS and REM sleep.
         `;
     }
 
-    // Fallback for any other file
-    return "The content for this file could not be retrieved or is not available for preview.";
+    return "The content for this file could not be retrieved or is not available for preview in demo mode.";
+};
+
+export const deleteItems = async (fileIds: string[], folderIds: string[]): Promise<void> => {
+    files = files.filter(f => !fileIds.includes(f.id));
+    folders = folders.filter(f => !folderIds.includes(f.id));
+    return Promise.resolve();
+};
+
+export const addSampleFiles = async (userId: string): Promise<void> => {
+    const samplesToAdd = ONBOARDING_SAMPLE_FILES.map(sample => ({
+        ...sample,
+        id: crypto.randomUUID(),
+        owner_id: userId,
+    }));
+    files.unshift(...samplesToAdd);
+    return Promise.resolve();
 };
