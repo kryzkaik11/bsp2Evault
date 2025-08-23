@@ -59,8 +59,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
+    // Safeguard: If the auth listener doesn't fire for any reason within a timeout,
+    // we'll still unblock the UI to prevent it from being stuck on the splash screen indefinitely.
+    const readyTimeout = setTimeout(() => {
+        if (!isAuthReady) {
+            setIsAuthReady(true);
+            setLoading(false);
+        }
+    }, 2000); // 2-second grace period
+
     return () => {
       authListener?.subscription.unsubscribe();
+      clearTimeout(readyTimeout);
     };
   }, []);
 
