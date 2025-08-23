@@ -24,17 +24,44 @@ const toAppFile = (fileFromDb: Database['public']['Tables']['files']['Row']): Ap
 export const getProfileForUser = async (user: User): Promise<UserProfile | null> => {
     if (isDemoMode) return mockApi.getProfileForUser(user);
     
-    const { data, error } = await supabase
+    // 1. Try to fetch the profile
+    const { data: existingProfile, error } = await supabase
         .from('profiles')
         .select('id, display_name, role, settings')
         .eq('id', user.id)
         .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+    // 2. If profile exists, return it
+    if (existingProfile) {
+        return existingProfile as UserProfile;
+    }
+
+    // 3. If there was an error other than 'not found', log it and fail.
+    if (error && error.code !== 'PGRST116') { // PGRST116 = row not found
         console.error('Error fetching profile:', error);
         return null;
     }
-    return data as UserProfile | null;
+    
+    // 4. If profile was not found (PGRST116), it's a new user. Create a profile.
+    console.log(`Profile not found for user ${user.id}. Creating a new profile.`);
+    const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+            id: user.id,
+            // Supabase populates user_metadata from the signUp call's options.
+            display_name: user.user_metadata?.display_name || user.email,
+            // All new users are 'Student' role by default.
+            role: 'Student'
+        })
+        .select('id, display_name, role, settings')
+        .single();
+
+    if (insertError) {
+        console.error('Error creating profile for new user:', insertError);
+        return null;
+    }
+
+    return newProfile as UserProfile;
 }
 
 export const getFolders = async (parentId: string | null): Promise<Folder[]> => {
