@@ -30,15 +30,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
     console.warn("Supabase credentials not found. Running in demo mode.");
     isDemoMode = true;
 
+    const now = new Date().toISOString();
     const mockUser: User = {
         id: MOCK_USER_ID,
         app_metadata: { provider: 'email' },
         user_metadata: { display_name: 'Demo User' },
         aud: 'authenticated',
-        created_at: new Date().toISOString(),
+        created_at: now,
         email: 'demo@example.com',
-        email_confirmed_at: new Date().toISOString(),
-        last_sign_in_at: new Date().toISOString(),
+        email_confirmed_at: now,
+        last_sign_in_at: now,
     };
 
     const mockSession: Session = {
