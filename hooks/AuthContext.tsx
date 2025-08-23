@@ -30,35 +30,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthReady, setIsAuthReady] = useState(false);
 
    useEffect(() => {
-    // onAuthStateChange provides the initial session, so we don't need a separate getSession call.
-    // This simplifies logic and prevents race conditions.
+    // onAuthStateChange fires with the initial session right away.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        setLoading(true);
-        try {
-            setSession(session);
-            const currentUser = session?.user ?? null;
-            setUser(currentUser);
-            
-            if (currentUser) {
+        setSession(session);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+
+        if (currentUser) {
+            try {
                 const userProfile = await getProfileForUser(currentUser);
                 if (userProfile) {
                     setProfile(userProfile);
                     if (currentUser.created_at === currentUser.last_sign_in_at) {
                         setOnboardingCompleted(false);
                     }
+                    // Only stop loading when profile is successfully fetched
+                    setIsAuthReady(true);
+                    setLoading(false);
                 } else {
                     console.error("Critical: User is authenticated but profile could not be fetched or created. Signing out.");
                     await supabase.auth.signOut();
+                    // Let the next 'SIGNED_OUT' event handle the state update
                 }
-            } else {
-                setProfile(null);
-                setOnboardingCompleted(false);
+            } catch (error) {
+                console.error("Error fetching profile, signing out:", error);
+                await supabase.auth.signOut();
             }
-        } catch (error) {
-            console.error("Error during auth state change:", error);
-        } finally {
-            // Auth is ready after the first check.
+        } else {
+            // No user, so we're not loading anymore.
+            setProfile(null);
+            setOnboardingCompleted(false);
             setIsAuthReady(true);
             setLoading(false);
         }
