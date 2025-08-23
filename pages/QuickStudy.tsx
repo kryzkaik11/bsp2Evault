@@ -20,18 +20,9 @@ const QuickStudy: React.FC = () => {
     const [result, setResult] = useState<string | FlashcardType[] | null>(null);
 
     const ai = useMemo(() => {
-        let apiKey: string | undefined;
-        
-        if (window.APP_CONFIG && !window.APP_CONFIG.VITE_API_KEY.startsWith('__')) {
-            apiKey = window.APP_CONFIG.VITE_API_KEY;
-        }
-
-        if (!apiKey) {
-            setError("Error: VITE_API_KEY is not configured. AI features are disabled.");
-            return null;
-        }
-        setError(null);
-        return new GoogleGenAI({ apiKey });
+        // Per coding guidelines, the API key is assumed to be pre-configured and valid
+        // in the process.env.API_KEY environment variable.
+        return new GoogleGenAI({ apiKey: process.env.API_KEY });
     }, []);
 
     const handleGenerate = async (tool: AITool) => {
