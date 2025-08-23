@@ -56,9 +56,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
                 data: { session: mockSession },
                 error: null,
             }),
-            onAuthStateChange: (_event: string, callback: (event: string, session: Session | null) => void): { data: { subscription: Subscription } } => {
-                // Immediately call back with a mock session to simulate login
-                callback('INITIAL_SESSION', mockSession);
+            onAuthStateChange: (callback: (event: string, session: Session | null) => void): { data: { subscription: Subscription } } => {
+                // Defer the callback to mimic the async nature of the real API and avoid state updates during render.
+                Promise.resolve().then(() => callback('INITIAL_SESSION', mockSession));
                 return { data: { subscription: { id: 'mock-subscription', callback, unsubscribe: () => {} } } };
             },
             signOut: async () => { console.log("Demo mode: signOut called"); return { error: null }; },
