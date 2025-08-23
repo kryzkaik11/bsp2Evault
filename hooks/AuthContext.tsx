@@ -16,7 +16,6 @@ interface AuthContextType {
   onboardingCompleted: boolean;
   completeOnboarding: () => void;
   updateUserSettings: (settings: Partial<UserProfile['settings']>) => void;
-  isAuthReady: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,12 +24,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Always start in a loading state
   const [onboardingCompleted, setOnboardingCompleted] = useLocalStorage('onboardingCompleted', false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
 
-   useEffect(() => {
-    // onAuthStateChange fires with the initial session right away.
+  useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
@@ -45,45 +42,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     if (currentUser.created_at === currentUser.last_sign_in_at) {
                         setOnboardingCompleted(false);
                     }
-                    // Only stop loading when profile is successfully fetched
-                    setIsAuthReady(true);
+                    // Only stop loading when user and profile are in a consistent state
                     setLoading(false);
                 } else {
                     console.error("Critical: User is authenticated but profile could not be fetched or created. Signing out.");
                     await supabase.auth.signOut();
-                    // Let the next 'SIGNED_OUT' event handle the state update
+                    // The next 'SIGNED_OUT' event will handle setting loading to false.
                 }
             } catch (error) {
                 console.error("Error fetching profile, signing out:", error);
                 await supabase.auth.signOut();
             }
         } else {
-            // No user, so we're not loading anymore.
+            // No user, so we're ready to show the login screen.
             setProfile(null);
             setOnboardingCompleted(false);
-            setIsAuthReady(true);
             setLoading(false);
         }
       }
     );
 
-    // Safeguard: If the auth listener doesn't fire for any reason within a timeout,
-    // we'll still unblock the UI to prevent it from being stuck on the splash screen indefinitely.
-    const readyTimeout = setTimeout(() => {
-        if (!isAuthReady) {
-            setIsAuthReady(true);
-            setLoading(false);
-        }
-    }, 2000); // 2-second grace period
-
     return () => {
       authListener?.subscription.unsubscribe();
-      clearTimeout(readyTimeout);
     };
   }, []);
 
   const logout = async () => {
+    setLoading(true); // Set loading to true for a smooth transition
     await supabase.auth.signOut();
+    // onAuthStateChange will handle setting user/profile to null and loading back to false
   };
   
   const completeOnboarding = () => {
@@ -104,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, logout, loading, onboardingCompleted, completeOnboarding, updateUserSettings, isAuthReady }}>
+    <AuthContext.Provider value={{ session, user, profile, logout, loading, onboardingCompleted, completeOnboarding, updateUserSettings }}>
       {children}
     </AuthContext.Provider>
   );
