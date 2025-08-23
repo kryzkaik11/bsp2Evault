@@ -25,36 +25,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [onboardingCompleted, setOnboardingCompleted] = useLocalStorage('onboardingCompleted', false);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
    useEffect(() => {
-    const fetchSession = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-            const userProfile = await getProfileForUser(session.user);
-            setProfile(userProfile);
-        }
-        setIsAuthReady(true);
-    };
-
-    fetchSession();
-
+    // onAuthStateChange provides the initial session, so we don't need a separate getSession call.
+    // This simplifies logic and prevents race conditions.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         const currentUser = session?.user ?? null;
         setUser(currentUser);
-
+        
         if (currentUser) {
-            setLoading(true);
             const userProfile = await getProfileForUser(currentUser);
             setProfile(userProfile);
-            setLoading(false);
             if (currentUser.created_at === currentUser.last_sign_in_at) {
                 setOnboardingCompleted(false);
             }
@@ -62,6 +48,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setProfile(null);
             setOnboardingCompleted(false);
         }
+        
+        // Auth is ready after the first check.
+        setIsAuthReady(true);
+        setLoading(false);
       }
     );
 
@@ -81,8 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateUserSettings = async (settingsUpdate: Partial<UserProfile['settings']>) => {
     if (!profile) return;
     const newSettings = { ...profile.settings, ...settingsUpdate };
-    // Here you would call an API to update the user's settings in the database
-    // For now, just updating local state
+    // In a real app, you would call an API to update the user's settings.
     setProfile(currentProfile => {
       if (!currentProfile) return null;
       return {
