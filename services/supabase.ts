@@ -1,5 +1,4 @@
 
-
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from './database.types';
 
@@ -23,6 +22,8 @@ if (!supabaseAnonKey && window.APP_CONFIG && !window.APP_CONFIG.VITE_SUPABASE_AN
     supabaseAnonKey = window.APP_CONFIG.VITE_SUPABASE_ANON_KEY;
 }
 
+// Ensure that credentials are provided, otherwise throw an error.
+// This prevents the app from running in a broken or unintended demo state.
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Supabase URL or Anon Key is not configured. Please check your environment variables or deployment settings.");
 }
