@@ -42,9 +42,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             
             if (currentUser) {
                 const userProfile = await getProfileForUser(currentUser);
-                setProfile(userProfile);
-                if (currentUser.created_at === currentUser.last_sign_in_at) {
-                    setOnboardingCompleted(false);
+                if (userProfile) {
+                    setProfile(userProfile);
+                    if (currentUser.created_at === currentUser.last_sign_in_at) {
+                        setOnboardingCompleted(false);
+                    }
+                } else {
+                    console.error("Critical: User is authenticated but profile could not be fetched or created. Signing out.");
+                    await supabase.auth.signOut();
                 }
             } else {
                 setProfile(null);
