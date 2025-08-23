@@ -1,5 +1,8 @@
 
 
+
+
+
 import { supabase } from './supabase';
 import { AppFile, Folder, Visibility, Collection, UserProfile, FileStatus, FileType, AnalysisContent } from '../types';
 import { User } from '@supabase/supabase-js';
@@ -50,7 +53,7 @@ export const getFolders = async (parentId: string | null): Promise<Folder[]> => 
     .order('title', { ascending: true });
     
   if (error) throw error;
-  return (data || []).map((f: Database['public']['Tables']['folders']['Row']) => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+  return (data || []).map((f) => ({ ...f, visibility: f.visibility as Visibility, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 };
 
 export const getFiles = async (folderId: string | null): Promise<AppFile[]> => {
@@ -94,7 +97,7 @@ export const getSharedFolders = async (parentId: string | null): Promise<Folder[
         .order('title', { ascending: true });
 
     if (error) throw error;
-    return (data || []).map((f: Database['public']['Tables']['folders']['Row']) => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+    return (data || []).map((f) => ({ ...f, visibility: f.visibility as Visibility, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 }
 
 export const getSharedFiles = async (folderId: string | null): Promise<AppFile[]> => {
@@ -133,28 +136,28 @@ export const getFolderPath = async (folderId: string | null): Promise<Folder[]> 
     
     const { data, error } = await supabase.rpc('get_folder_path', {
         p_folder_id: folderId
-    } as any);
+    });
 
     if (error) {
         console.error("Error fetching folder path with RPC, using fallback:", error);
         // Fallback for local dev if RPC not set up
         const allFolders = await getAllFolders();
         const path: Folder[] = [];
-        let currentFolder = allFolders.find(f => f.id === folderId);
+        let currentFolder: Folder | undefined = allFolders.find(f => f.id === folderId);
         while(currentFolder) {
             path.unshift(currentFolder);
             currentFolder = allFolders.find(f => f.id === currentFolder!.parent_id);
         }
-        return path.map((f: Folder) => ({...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+        return path;
     }
 
-    return (Array.isArray(data) ? data : []).map((f: any) => ({...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+    return (Array.isArray(data) ? data : []).map((f) => ({...f, visibility: f.visibility as Visibility, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 }
 
 export const getAllFolders = async (): Promise<Folder[]> => {
     const { data, error } = await supabase.from('folders').select('id, owner_id, title, parent_id, visibility, path, created_at, updated_at');
     if (error) throw error;
-    return (data || []).map((f: Database['public']['Tables']['folders']['Row']) => ({ ...f, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
+    return (data || []).map((f) => ({ ...f, visibility: f.visibility as Visibility, created_at: new Date(f.created_at), updated_at: new Date(f.updated_at) }));
 }
 
 export const addFile = async (file: File, ownerId: string, folderId: string | null): Promise<AppFile> => {
@@ -219,7 +222,7 @@ export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> =>
 
     const { data, error } = await supabase
         .from('files')
-        .update(dbPayload as any)
+        .update(dbPayload)
         .eq('id', updatedFile.id)
         .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content')
         .single();
@@ -231,7 +234,7 @@ export const updateFileInApi = async (updatedFile: AppFile): Promise<AppFile> =>
 export const publishFiles = async (fileIds: string[]): Promise<AppFile[]> => {
     const { data, error } = await supabase
         .from('files')
-        .update({ visibility: 'shared', updated_at: new Date().toISOString() } as any)
+        .update({ visibility: 'shared', updated_at: new Date().toISOString() })
         .in('id', fileIds)
         .select('id, owner_id, folder_id, title, type, size, status, progress, visibility, collection_ids, tags, created_at, updated_at, meta, ai_content');
 
@@ -240,11 +243,11 @@ export const publishFiles = async (fileIds: string[]): Promise<AppFile[]> => {
 }
 
 export const createFolder = async (title: string, parentId: string | null, ownerId: string): Promise<Folder> => {
-    let parentFolder: Pick<Folder, 'visibility' | 'path'> | null = null;
+    let parentFolder: { visibility: "private" | "shared"; path: string[]; } | null = null;
     if (parentId) {
         const { data, error } = await supabase.from('folders').select('visibility, path').eq('id', parentId).single();
         if (error) throw error;
-        parentFolder = data as any;
+        parentFolder = data;
     }
 
     const newFolderData: Database['public']['Tables']['folders']['Insert'] = {
@@ -252,7 +255,7 @@ export const createFolder = async (title: string, parentId: string | null, owner
         owner_id: ownerId,
         title,
         parent_id: parentId,
-        visibility: parentFolder ? (parentFolder.visibility as any) : 'private',
+        visibility: parentFolder ? parentFolder.visibility : 'private',
         path: parentFolder ? [...parentFolder.path, parentId!] : [],
     };
     
@@ -265,13 +268,13 @@ export const createFolder = async (title: string, parentId: string | null, owner
     if (!data || data.length === 0) throw new Error("Folder creation failed.");
     
     const newFolder = data[0];
-    return { ...newFolder, created_at: new Date(newFolder.created_at), updated_at: new Date(newFolder.updated_at) };
+    return { ...newFolder, visibility: newFolder.visibility as Visibility, created_at: new Date(newFolder.created_at), updated_at: new Date(newFolder.updated_at) };
 }
 
 export const getCollections = async (): Promise<Collection[]> => {
     const { data, error } = await supabase.from('collections').select('id, owner_id, title, visibility, file_ids, created_at, updated_at');
     if (error) throw error;
-    return (data || []).map((c: Database['public']['Tables']['collections']['Row']) => ({ ...c, created_at: new Date(c.created_at), updated_at: new Date(c.updated_at) }));
+    return (data || []).map((c) => ({ ...c, visibility: c.visibility as Visibility, created_at: new Date(c.created_at), updated_at: new Date(c.updated_at) }));
 }
 
 export const getFileContent = async (file: AppFile): Promise<string> => {
@@ -469,7 +472,7 @@ export const addSampleFiles = async (userId: string) => {
         };
     });
 
-    const { error } = await supabase.from('files').insert(sampleFileRecords as any);
+    const { error } = await supabase.from('files').insert(sampleFileRecords);
 
     if (error) {
         console.error('Error adding sample files:', error);
