@@ -1,44 +1,86 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, Session, User, AuthError, Subscription } from '@supabase/supabase-js';
 import { Database } from './database.types';
+import { MOCK_USER_ID } from './mockData';
 
 // Use runtime configuration object for credentials
 let supabaseUrl: string | undefined;
 let supabaseAnonKey: string | undefined;
 
+// First, try to get credentials from Vite's env for local development
+if (import.meta.env.VITE_SUPABASE_URL) {
+    supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+}
+if (import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+}
 
-// Get credentials from the window config (for deployments like Cloudflare Pages)
-if (window.APP_CONFIG && !window.APP_CONFIG.VITE_SUPABASE_URL.startsWith('__')) {
+// If not found, fall back to the window config (for deployments like Cloudflare Pages)
+if (!supabaseUrl && window.APP_CONFIG && !window.APP_CONFIG.VITE_SUPABASE_URL.startsWith('__')) {
     supabaseUrl = window.APP_CONFIG.VITE_SUPABASE_URL;
 }
-if (window.APP_CONFIG && !window.APP_CONFIG.VITE_SUPABASE_ANON_KEY.startsWith('__')) {
+if (!supabaseAnonKey && window.APP_CONFIG && !window.APP_CONFIG.VITE_SUPABASE_ANON_KEY.startsWith('__')) {
     supabaseAnonKey = window.APP_CONFIG.VITE_SUPABASE_ANON_KEY;
 }
 
+export let supabase: SupabaseClient<Database>;
+export let isDemoMode = false;
+
 if (!supabaseUrl || !supabaseAnonKey) {
-    const errorMessage = 'Supabase URL and Anon Key must be provided. Check your environment variables or that placeholders in index.html are replaced.';
-    console.error("Supabase credentials not found. Ensure you have a .env file for local development, or that your deployment process correctly replaces placeholders in index.html.");
-    
-    // Display a user-friendly error message on the screen, as the app cannot start.
-    const rootElement = document.getElementById('root');
-    if (rootElement) {
-        rootElement.innerHTML = `
-            <div style="font-family: 'Inter', sans-serif; padding: 2rem; color: #E6EAF5; background-color: #0B1020; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                <svg style="width: 4rem; height: 4rem; color: #F05252; margin-bottom: 1rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                </svg>
-                <h1 style="color: #F05252; font-size: 1.5rem; font-weight: bold;">Application Configuration Error</h1>
-                <p style="font-size: 1rem; margin-top: 1rem; color: #B6BBD2; max-width: 600px;">The application could not start because it's missing its connection details.</p>
-                <div style="background-color: #11162A; border: 1px solid #2A3047; padding: 1.5rem; margin-top: 2rem; border-radius: 8px; text-align: left;">
-                    <h2 style="font-size: 1.1rem; color: #7AA2F7; font-weight: 600;">How to Fix This</h2>
-                    <p style="margin-top: 0.75rem; color: #B6BBD2;">If you are the administrator of this application, please ensure that the environment variables for Supabase are correctly configured in your deployment environment (e.g., Cloudflare Pages).</p>
-                    <p style="margin-top: 0.75rem; color: #B6BBD2;">The placeholder values in <code>index.html</code> (like <code>__VITE_SUPABASE_URL__</code>) must be replaced with your actual Supabase credentials during the build or deployment process.</p>
-                </div>
-            </div>
-        `;
-    }
+    console.warn("Supabase credentials not found. Running in demo mode.");
+    isDemoMode = true;
 
-    throw new Error(errorMessage);
+    const mockUser: User = {
+        id: MOCK_USER_ID,
+        app_metadata: { provider: 'email' },
+        user_metadata: { display_name: 'Demo User' },
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        email: 'demo@example.com',
+        email_confirmed_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+    };
+
+    const mockSession: Session = {
+        access_token: 'mock-access-token',
+        refresh_token: 'mock-refresh-token',
+        expires_in: 3600,
+        token_type: 'bearer',
+        user: mockUser,
+    };
+
+    // Create a mock Supabase client
+    supabase = {
+        auth: {
+            getSession: async (): Promise<{ data: { session: Session | null }; error: AuthError | null }> => ({
+                data: { session: mockSession },
+                error: null,
+            }),
+            onAuthStateChange: (_event: string, callback: (event: string, session: Session | null) => void): { data: { subscription: Subscription } } => {
+                // Immediately call back with a mock session to simulate login
+                callback('INITIAL_SESSION', mockSession);
+                return { data: { subscription: { id: 'mock-subscription', callback, unsubscribe: () => {} } } };
+            },
+            signOut: async () => { console.log("Demo mode: signOut called"); return { error: null }; },
+            signInWithPassword: async () => ({ data: { session: mockSession, user: mockUser }, error: null }),
+            signUp: async () => ({ data: { session: mockSession, user: mockUser }, error: null }),
+        },
+        from: () => ({
+            select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+            insert: () => Promise.resolve({ data: null, error: null }),
+            update: () => Promise.resolve({ data: null, error: null }),
+            delete: () => Promise.resolve({ data: null, error: null }),
+            rpc: () => Promise.resolve({ data: null, error: null }),
+        }),
+        storage: {
+            from: () => ({
+                upload: () => Promise.resolve({ data: { path: 'mock/path' }, error: null }),
+                download: () => Promise.resolve({ data: new Blob(["mock content"]), error: null }),
+                remove: () => Promise.resolve({ data: [], error: null }),
+            })
+        }
+    } as unknown as SupabaseClient<Database>;
+
+} else {
+    supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 }
-
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
