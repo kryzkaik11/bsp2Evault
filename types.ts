@@ -1,5 +1,16 @@
 
 
+// Add a global declaration for our runtime configuration object
+declare global {
+  interface Window {
+    APP_CONFIG?: {
+      VITE_SUPABASE_URL: string;
+      VITE_SUPABASE_ANON_KEY: string;
+      VITE_API_KEY: string;
+    }
+  }
+}
+
 export enum Role {
   Admin = 'Admin',
   Student = 'Student',
