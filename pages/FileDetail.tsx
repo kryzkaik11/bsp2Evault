@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type, Chat } from '@google/genai';
@@ -75,9 +74,9 @@ const FileDetail: React.FC<FileDetailProps> = ({ file, onBack, updateFile }) => 
     }, [aiContent, file, updateFile]);
 
     const ai = useMemo(() => {
-        let apiKey: string | undefined = import.meta.env.VITE_API_KEY;
+        let apiKey: string | undefined;
         
-        if (!apiKey && window.APP_CONFIG && !window.APP_CONFIG.VITE_API_KEY.startsWith('__')) {
+        if (window.APP_CONFIG && !window.APP_CONFIG.VITE_API_KEY.startsWith('__')) {
             apiKey = window.APP_CONFIG.VITE_API_KEY;
         }
 
