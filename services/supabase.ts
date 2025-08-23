@@ -1,18 +1,17 @@
-/// <reference types="vite/client" />
 
 import { createClient } from '@supabase/supabase-js';
 import { Database } from './database.types';
 
-// First, try to get from Vite's env variables (for local dev)
-let supabaseUrl: string | undefined = import.meta.env.VITE_SUPABASE_URL;
-let supabaseAnonKey: string | undefined = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Use runtime configuration object for credentials
+let supabaseUrl: string | undefined;
+let supabaseAnonKey: string | undefined;
 
 
-// If not found, fall back to the window config (for deployments like Cloudflare Pages)
-if (!supabaseUrl && window.APP_CONFIG && !window.APP_CONFIG.VITE_SUPABASE_URL.startsWith('__')) {
+// Get credentials from the window config (for deployments like Cloudflare Pages)
+if (window.APP_CONFIG && !window.APP_CONFIG.VITE_SUPABASE_URL.startsWith('__')) {
     supabaseUrl = window.APP_CONFIG.VITE_SUPABASE_URL;
 }
-if (!supabaseAnonKey && window.APP_CONFIG && !window.APP_CONFIG.VITE_SUPABASE_ANON_KEY.startsWith('__')) {
+if (window.APP_CONFIG && !window.APP_CONFIG.VITE_SUPABASE_ANON_KEY.startsWith('__')) {
     supabaseAnonKey = window.APP_CONFIG.VITE_SUPABASE_ANON_KEY;
 }
 
