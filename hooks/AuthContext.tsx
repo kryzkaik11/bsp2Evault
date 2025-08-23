@@ -34,24 +34,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // This simplifies logic and prevents race conditions.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        setSession(session);
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        
-        if (currentUser) {
-            const userProfile = await getProfileForUser(currentUser);
-            setProfile(userProfile);
-            if (currentUser.created_at === currentUser.last_sign_in_at) {
+        try {
+            setSession(session);
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
+            
+            if (currentUser) {
+                const userProfile = await getProfileForUser(currentUser);
+                setProfile(userProfile);
+                if (currentUser.created_at === currentUser.last_sign_in_at) {
+                    setOnboardingCompleted(false);
+                }
+            } else {
+                setProfile(null);
                 setOnboardingCompleted(false);
             }
-        } else {
-            setProfile(null);
-            setOnboardingCompleted(false);
+        } catch (error) {
+            console.error("Error during auth state change:", error);
+        } finally {
+            // Auth is ready after the first check.
+            setIsAuthReady(true);
+            setLoading(false);
         }
-        
-        // Auth is ready after the first check.
-        setIsAuthReady(true);
-        setLoading(false);
       }
     );
 
