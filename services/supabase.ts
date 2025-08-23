@@ -1,5 +1,5 @@
 
-import { createClient, SupabaseClient, Session, User, AuthError, Subscription } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, Session, User, AuthError, Subscription, AuthChangeEvent } from '@supabase/supabase-js';
 import { Database } from './database.types';
 import { MOCK_USER_ID } from './mockData';
 
@@ -56,9 +56,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
                 data: { session: mockSession },
                 error: null,
             }),
-            onAuthStateChange: (callback: (event: string, session: Session | null) => void): { data: { subscription: Subscription } } => {
+            onAuthStateChange: (callback: (event: AuthChangeEvent, session: Session | null) => void): { data: { subscription: Subscription } } => {
                 // Defer the callback to mimic the async nature of the real API and avoid state updates during render.
-                Promise.resolve().then(() => callback('INITIAL_SESSION', mockSession));
+                setTimeout(() => callback('INITIAL_SESSION', mockSession), 0);
                 return { data: { subscription: { id: 'mock-subscription', callback, unsubscribe: () => {} } } };
             },
             signOut: async () => { console.log("Demo mode: signOut called"); return { error: null }; },
