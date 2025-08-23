@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 
 import React, { useState, useMemo } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -21,9 +20,9 @@ const QuickStudy: React.FC = () => {
     const [result, setResult] = useState<string | FlashcardType[] | null>(null);
 
     const ai = useMemo(() => {
-        let apiKey: string | undefined = import.meta.env.VITE_API_KEY;
+        let apiKey: string | undefined;
         
-        if (!apiKey && window.APP_CONFIG && !window.APP_CONFIG.VITE_API_KEY.startsWith('__')) {
+        if (window.APP_CONFIG && !window.APP_CONFIG.VITE_API_KEY.startsWith('__')) {
             apiKey = window.APP_CONFIG.VITE_API_KEY;
         }
 
